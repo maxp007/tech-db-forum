@@ -1,14 +1,14 @@
-package connector
+package database
 
 import (
-"database/sql"
-"fmt"
-_ "github.com/lib/pq"
+	"database/sql"
+	"fmt"
+	_ "github.com/lib/pq"
 )
 
 const (
 	host     = "localhost"
-	port     = 5433
+	port     = 5432
 	user     = "postgres"
 	password = "945020"
 	dbname   = "tech-db-1"
@@ -21,17 +21,13 @@ func Connect() (db *sql.DB, err error) {
 
 	db, err = sql.Open("postgres", connString)
 	if err != nil {
+		fmt.Print("Connection open error", err)
 		return
 	}
-	defer func() {
-		err = db.Close()
-		if err != nil {
-			return
-		}
-	}()
+
 	err = db.Ping()
 	if err != nil {
-		return
+		fmt.Print("Connectin ping", err)
 	}
 	return
 }

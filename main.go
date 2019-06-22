@@ -1,14 +1,14 @@
 package main
 
 import (
-	"fmt"
-	"github.com/maxp007/tech-db-forum/db_creator"
+	"github.com/maxp007/tech-db-forum/router"
+	"log"
+	"net/http"
 )
 
 func main() {
-	err:= db_creator.Create()
-	if err!=nil{
-		fmt.Println("Main:db_creator.Create()", err)
-		return
+	err := http.ListenAndServe(":5000", router.GetRouter()) // задаем слушать порт
+	if err != nil {
+		log.Fatal("ListenAndServe: ", err)
 	}
 }
