@@ -1,55 +1,56 @@
-﻿FROM golang:onbuild
+﻿FROM ubuntu:18.04
 
-# Копируем исходный код в Docker-контейнер
-ADD . .
+ENV PGSQLVER 10
+ENV DEBIAN_FRONTEND 'noninteractive'
 
+RUN echo 'Europe/Moscow' > '/etc/timezone'
 
-FROM ubuntu:18.04 AS release
+RUN apt-get -o Acquire::Check-Valid-Until=false update
+RUN apt install -y gcc git wget
+RUN apt install -y postgresql-$PGSQLVER
 
-MAINTAINER Ivan Ivanov
+RUN wget https://dl.google.com/go/go1.12.linux-amd64.tar.gz
+RUN tar -xvf go1.12.linux-amd64.tar.gz
+RUN mv go /usr/local
 
-EXPOSE 8080
+ENV GOROOT /usr/local/go
+ENV GOPATH /opt/go
+ENV PATH $GOROOT/bin:$GOPATH/bin:/usr/local/go/bin:$PATH
 
-#
-# Установка postgresql
-#
-ENV PGVER 10
-RUN apt -y update && apt install -y postgresql-$PGVER
+WORKDIR /server
+COPY . .
 
-# Run the rest of the commands as the ``postgres`` user created by the ``postgres-$PGVER`` package when it was ``apt-get installed``
+RUN cd /server
+RUN go get -u
+ENV PORT 5000
+EXPOSE $PORT
+
 USER postgres
 
-# Create a PostgreSQL role named ``docker`` with ``docker`` as the password and
-# then create a database `docker` owned by the ``docker`` role.
 RUN /etc/init.d/postgresql start &&\
-    createdb -O tech-db-1 postgres &&\
-    /etc/init.d/postgresql stop
+	psql --echo-all --command "CREATE USER mac WITH SUPERUSER PASSWORD '1209qawsed';" &&\
+	psql -d postgres -f database/dump.sql &&\
+	/etc/init.d/postgresql stop
 
-# Adjust PostgreSQL configuration so that remote connections to the
-# database are possible.
-RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/$PGVER/main/pg_hba.conf
+RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/$PGSQLVER/main/pg_hba.conf &&\
+	echo "listen_addresses='*'" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf &&\
+	echo "fsync = off" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf &&\
+	echo "synchronous_commit = off" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf &&\
+	echo "shared_buffers = 256MB" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf &&\
+	echo "work_mem = 51MB" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf &&\
+	echo "maintenance_work_mem = 256MB" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf &&\
+	echo "wal_sync_method = fdatasync" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf &&\
+	echo "commit_delay = 55" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf &&\
+	echo "commit_siblings = 8" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf &&\
+	echo "random_page_cost = 2.0" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf &&\
+	echo "cpu_tuple_cost = 0.001" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf &&\
+	echo "cpu_index_tuple_cost = 0.0005" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf &&\
+	echo "autovacuum = on" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf &&\
+	echo "wal_level = minimal" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf &&\
+	echo "max_wal_senders = 0" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf
 
-# And add ``listen_addresses`` to ``/etc/postgresql/$PGVER/main/postgresql.conf``
-RUN echo "listen_addresses='*'" >> /etc/postgresql/$PGVER/main/postgresql.conf
-
-# Expose the PostgreSQL port
 EXPOSE 5432
 
-# Add VOLUMEs to allow backup of config, logs and databases
-VOLUME  ["/etc/postgresql", "/var/log/postgresql", "/var/lib/postgresql"]
-
-# Back to the root user
 USER root
 
-# Объявлем порт сервера
-EXPOSE 5000
-
-# Собранный ранее сервер
-COPY --from=build go/bin/hello-server /usr/bin/
-
-#
-# Запускаем PostgreSQL и сервер
-#
-CMD service postgresql start && hello-server --scheme=http --port=5000 --host=0.0.0.0 --database=postgres://docker:docker@localhost/docker
-
-
+CMD service postgresql start && go run main.go
