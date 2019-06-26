@@ -1088,7 +1088,7 @@ BEGIN
            FROM "Post"
            WHERE parent = 0
              AND "Post".thread = treadId
-           LIMIT limit_posts + 2)
+           LIMIT limit_posts)
           UNION
           SELECT parent_name,
                  f1.id,
