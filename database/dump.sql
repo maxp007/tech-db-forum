@@ -831,50 +831,38 @@ BEGIN
       -------------------------------------------------------------------------------------
     else
       if since_posts <> 0 then
-        tree_result_ids_array := ARRAY(WITH RECURSIVE tree
-          AS
-          (
-          SELECT message,
-                 id,
-                 parent,
-                 NULL::varchar AS parent_name,
-                 array [id]    AS path
-          FROM "Post"
-          WHERE parent = 0
-            AND "Post".thread = treadId
-          UNION
-          SELECT parent_name,
-                 f1.id,
-                 f1.parent,
-                 tree.message       AS parent_name,
-                 tree.path || f1.id AS path
-          FROM tree
-                 JOIN "Post" f1 ON f1.parent = tree.id
-          )
-          SELECT tree.id
-          FROM tree
-          ORDER BY path);
+        parent_id_array := ARRAY(SELECT id FROM "Post" WHERE "Post".parent = 0 AND id > since_posts LIMIT limit_posts);
+        if array_length(parent_id_array, 1) = 0 OR array_length(parent_id_array, 1) IS NULL
+        then
+          RETURN;
+        end if;
 
-        FOR i IN 1..array_length(tree_result_ids_array, 1)
+        FOR i in 1..array_length(parent_id_array, 1)
           LOOP
-            if tree_result_ids_array [ i] = since_posts then
-              node_id_found := true;
-              CONTINUE;
-            end if;
-
-            if array_length(filtered_with_since_array, 1) IS NULL AND node_id_found then
-              filtered_with_since_array = array_append(filtered_with_since_array, tree_result_ids_array [ i]);
-              CONTINUE;
-            end if;
-
-            if array_length(filtered_with_since_array, 1) > 0 AND
-               array_length(filtered_with_since_array, 1) < limit_posts and node_id_found then
-              filtered_with_since_array = array_append(filtered_with_since_array, tree_result_ids_array [ i]);
-            end if;
-
-            if array_length(filtered_with_since_array, 1) = limit_posts and node_id_found then
-              EXIT;
-            end if;
+            filtered_with_since_array := array_append(filtered_with_since_array, parent_id_array [ i]);
+            filtered_with_since_array := array_cat(filtered_with_since_array, ARRAY(WITH RECURSIVE tree
+              AS
+              (
+              SELECT message,
+                     id,
+                     parent,
+                     NULL::varchar AS parent_name,
+                     array [id]    AS path
+              FROM "Post"
+              WHERE parent = parent_id_array [ i]
+                AND "Post".thread = treadId
+              UNION
+              SELECT parent_name,
+                     f1.id,
+                     f1.parent,
+                     tree.message       AS parent_name,
+                     tree.path || f1.id AS path
+              FROM tree
+                     JOIN "Post" f1 ON f1.parent = tree.id
+              )
+              SELECT tree.id
+              FROM tree
+              ORDER BY path));
 
           end loop;
 
@@ -882,10 +870,8 @@ BEGIN
         FOR i IN 1..array_length(filtered_with_since_array, 1)
           LOOP
             SELECT * INTO post_row_temp FROM public."Post" WHERE id = filtered_with_since_array [ i];
-
             post_row_temp_array = array_append(post_row_temp_array, post_row_temp);
           end loop;
-
 
         RETURN QUERY SELECT * FROM unnest(post_row_temp_array);
 
