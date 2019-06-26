@@ -33,6 +33,8 @@ RUN /etc/init.d/postgresql start &&\
 	psql -d docker -f database/dump.sql &&\
 	/etc/init.d/postgresql stop
 
+
+
 RUN rm -rf /etc/postgresql/$PGSQLVER/main/pg_hba.conf
 RUN echo "local   all             postgres                                peer\n\
 local   all             docker                                md5\n\
@@ -62,14 +64,4 @@ EXPOSE 5432
 USER root
 
 CMD service postgresql start && go run main.go
-
-
-
-USER postgres
-
-RUN /etc/init.d/postgresql start &&\
-	psql --echo-all --command "CREATE USER docker WITH SUPERUSER PASSWORD 'docker';" &&\
-	createdb -O docker docker &&\
-	psql -d docker -f main_microservice/database/sql.sql &&\
-	/etc/init.d/postgresql stop
 

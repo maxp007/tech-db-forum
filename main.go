@@ -9,7 +9,8 @@ import (
 )
 
 func main() {
-
+	log.Println("Started listening on port", 5000)
+	fmt.Println("Started listening on port", 5000)
 	err := http.ListenAndServe(":5000", router.GetRouter()) // задаем слушать порт
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
