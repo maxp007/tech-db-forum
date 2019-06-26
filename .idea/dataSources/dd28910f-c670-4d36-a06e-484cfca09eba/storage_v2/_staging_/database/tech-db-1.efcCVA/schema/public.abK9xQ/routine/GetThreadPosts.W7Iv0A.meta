@@ -1,0 +1,2 @@
+#n:GetThreadPosts
+#i:(citext,integer,integer,integer,text,text)
