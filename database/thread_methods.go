@@ -947,7 +947,7 @@ func MethodPostUpdate(post_id string, newMessage string) (post models.PostWithEd
 		}
 	}()
 
-	rows, errmessage := tx.Query(`SELECT * FROM "CreateOrGetThread"($1,$2)`, post_id, newMessage)
+	rows, errmessage := tx.Query(`SELECT * FROM "UpdatePostDetails"($1,$2)`, post_id, newMessage)
 	if errmessage != nil {
 		if err, ok := errmessage.(*pq.Error); ok {
 			if err.Code == "P0001" {

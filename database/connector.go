@@ -15,7 +15,6 @@ const (
 	dbname   = "tech-db-1"
 )
 */
-
 const (
 	host     = "localhost"
 	port     = 5432

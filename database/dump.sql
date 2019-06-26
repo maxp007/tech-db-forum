@@ -1,8 +1,6 @@
-
 create extension if not exists "uuid-ossp";
 
 create extension if not exists "citext";
-
 
 
 -- Unknown how to generate base type type
@@ -641,7 +639,7 @@ BEGIN
            tree.path || f1.id AS path
     FROM tree
            JOIN "Post" f1 ON f1.parent = tree.id
-    ) SELECT tree.id, tree.parent,tree.path FROM tree order by path);
+    ) SELECT tree.id, tree.parent, tree.path FROM tree order by path);
 end
 $$;
 
@@ -671,7 +669,7 @@ DECLARE
   node_id_found                      bool;
   MIN_ID                             bigint;
   PARENT_MIN_ID                      bigint;
-  parents_counter INTEGER:=0;
+  parents_counter                    INTEGER := 0;
 BEGIN
   if thread_id = 0 then
     SELECT count(*) INTO thread_counter from public."Thread" where slug = thread_slug::citext;
@@ -1114,16 +1112,15 @@ BEGIN
           LOOP
             SELECT * INTO post_row_temp FROM public."Post" WHERE id = filtered_with_since_array [ i];
             RAISE NOTICE '% %', post_row_temp.id, post_row_temp.parent;
-            post_row_temp_array:=array_append(post_row_temp_array, post_row_temp);
+            post_row_temp_array := array_append(post_row_temp_array, post_row_temp);
           end loop;
 
         RETURN QUERY SELECT * FROM unnest(post_row_temp_array);
         return;
 
 
-
       else
-        tree_result_ids_array := ARRAY(WITH RECURSIVE tree   AS   (
+        tree_result_ids_array := ARRAY(WITH RECURSIVE tree AS (
           (SELECT message,
                   id,
                   parent,
@@ -1161,7 +1158,6 @@ END
 $$;
 
 alter function "GetThreadPosts"(citext, integer, integer, integer, text, text) owner to postgres;
-
 
 
 
@@ -1225,7 +1221,7 @@ BEGIN
   if descArg = 'true' then
     if sincearg = ''
     then
-      RETURN QUERY SELECT about,email,fullname,nickname
+      RETURN QUERY SELECT about, email, fullname, nickname
                    FROM forumuser
                           INNER JOIN
                         public."User" ON "User".nickname = forumuser.user
@@ -1234,7 +1230,7 @@ BEGIN
                    LIMIT limit_Arg;
 
     else
-      RETURN QUERY SELECT about,email,fullname,nickname
+      RETURN QUERY SELECT about, email, fullname, nickname
                    FROM forumuser
                           INNER JOIN
                         public."User" ON "User".nickname = forumuser.user
@@ -1247,7 +1243,7 @@ BEGIN
   else
     if sincearg = ''
     then
-      RETURN QUERY SELECT about,email,fullname,nickname
+      RETURN QUERY SELECT about, email, fullname, nickname
                    FROM forumuser
                           INNER JOIN
                         public."User" ON "User".nickname = forumuser.user
@@ -1256,7 +1252,7 @@ BEGIN
                    LIMIT limit_Arg;
 
     else
-      RETURN QUERY SELECT about,email,fullname,nickname
+      RETURN QUERY SELECT about, email, fullname, nickname
                    FROM forumuser
                           INNER JOIN
                         public."User" ON "User".nickname = forumuser.user
@@ -1274,7 +1270,7 @@ $$;
 
 alter function "GetForumUsers"(citext, integer, citext, text) owner to postgres;
 
-create or replace function "CreateOrGetThread"("postId" integer, "newMessage" text) returns SETOF "Post"
+create function "UpdatePostDetails"("postId" integer, "newMessage" text) returns SETOF "Post"
   language plpgsql
 as
 $$
@@ -1287,15 +1283,18 @@ BEGIN
     RAISE EXCEPTION no_data_found;
   end if;
   temp_message := (SELECT "message" FROM public."Post" WHERE id = "postId");
-  if temp_message <> "newMessage" then
-    UPDATE public."Post" SET message = "newMessage", "isEdited" = true WHERE id = "postId";
+  if temp_message <> "newMessage" AND "newMessage" IS NOT NULL AND "newMessage" <> '' then
+    UPDATE public."Post" SET "message" = COALESCE("newMessage", "message"), "isEdited" = true WHERE id = "postId";
   end if;
 
   RETURN QUERY SELECT * FROM public."Post" WHERE id = "postId";
 END
 $$;
 
-alter function "CreateOrGetThread"(integer, text) owner to postgres;
+alter function "UpdatePostDetails"(integer, text) owner to postgres;
+
+
+alter function "UpdatePostDetails"(integer, text) owner to postgres;
 
 create or replace function "CreatePostUsingFieldArrays"(author_array citext[], message_array text[],
                                                         parent_array integer[], array_len integer, thread_slug citext,
