@@ -669,7 +669,9 @@ DECLARE
   node_id_found                      bool;
   MIN_ID                             bigint;
   PARENT_MIN_ID                      bigint;
-  parents_counter INTEGER:=0;
+  parents_counter                    INTEGER := 0;
+  temp_id                            BIGINT;
+  since_root_parent                  BIGINT;
 BEGIN
   if thread_id = 0 then
     SELECT count(*) INTO thread_counter from public."Thread" where slug = thread_slug::citext;
@@ -933,102 +935,38 @@ BEGIN
       --------------------------------DESC=TRUE --------------------------------------------------------------
       if since_posts <> 0 then
         --------------------------------SINCE !=0 DESC --------------------------------------------------------------
-        tree_result_ids_array := ARRAY(WITH RECURSIVE tree
-          AS
-          (
-          (SELECT message,
-                  id,
-                  parent,
-                  NULL::varchar AS parent_name,
-                  array [id]    AS path
-           FROM "Post"
-           WHERE parent = 0
-             AND "Post".thread = treadId
-          )
-          UNION
-          SELECT parent_name,
-                 f1.id,
-                 f1.parent,
-                 tree.message       AS parent_name,
-                 tree.path || f1.id AS path
-          FROM tree
-                 JOIN "Post" f1 ON f1.parent = tree.id
-          )
-          SELECT tree.id
-          FROM tree
-          ORDER BY path);
 
-        if array_length(tree_result_ids_array, 1) IS NULL or array_length(tree_result_ids_array, 1) = 0 then
-          RAISE EXCEPTION 'empty tree_result_ids_array ARRAY'  USING ERRCODE = 'P0001';
-          RETURN;
-        end if;
-
-        node_id_found := false;
-        FOR i IN 1..array_length(tree_result_ids_array, 1)
+        temp_id := since_posts;
+        WHILE true
           LOOP
-            if tree_result_ids_array [ i] = since_posts then
-              node_id_found := true;
-              CONTINUE;
-            end if;
-
-            IF node_id_found then
-              SELECT * INTO post_row_temp FROM public."Post" where id = tree_result_ids_array [ i];
-              if post_row_temp.parent = 0 then
-                if parents_counter < limit_posts then
-                  --append parent
-                  filtered_with_since_array := array_append(filtered_with_since_array, tree_result_ids_array [ i]);
-                  parents_counter := parents_counter + 1;
-                else
-                  EXIT;
-                end if;
-              else
-                filtered_with_since_array := array_append(filtered_with_since_array, tree_result_ids_array [ i]);
-              end if;
+            SELECT * INTO post_row_temp FROM public."Post" WHERE id = temp_id;
+            if post_row_temp.parent = 0
+            then
+              since_root_parent := post_row_temp.id;
+              EXIT;
+            else
+              temp_id := post_row_temp.parent;
             end if;
           end loop;
 
-        if array_length(filtered_with_since_array, 1) IS NULL or array_length(filtered_with_since_array, 1) = 0 then
-          RAISE NOTICE 'empty filtered_with_since_array ARRAY' USING ERRCODE = 'P0001';
-          RETURN;
-        end if;
+        parent_id_array := ARRAY(SELECT id
+                                 FROM "Post"
+                                 WHERE (parent = 0 AND thread = treadId AND id < temp_id)
+                                 ORDER BY id DESC
+                                 LIMIT limit_posts);
 
-        FOR i in 1..array_length(filtered_with_since_array, 1)
-          LOOP
-            SELECT * INTO post_row_temp FROM public."Post" WHERE id = filtered_with_since_array [ i];
-            post_row_temp_array:=array_append(post_row_temp_array, post_row_temp);
-          end loop;
 
-        RETURN QUERY SELECT * FROM unnest(post_row_temp_array);
-        return;
-      else
-        --------------------------------SINCE = 0 DESC --------------------------------------------------------------
-        parent_id_array :=
-            ARRAY(SELECT id
-                  FROM public."Post"
-                  WHERE parent = 0
-                    AND "Post".thread = treadId
-                  ORDER BY id DESC
-                  LIMIT limit_posts);
-        if array_length(parent_id_array, 1) = 0 then
-          RETURN QUERY SELECT * FROM unnest(parent_id_array);
-          return;
-        end if;
-        --https://coderwall.com/p/jmtskw/use-in-instead-of-any-in-postgresql
-        FOR i IN 1..array_length(parent_id_array, 1)
+        FOR i in 1..array_length(parent_id_array, 1)
           LOOP
-            child_id_array := ARRAY(WITH RECURSIVE tree
-              AS
-              (
+            child_id_array := ARRAY(WITH RECURSIVE tree AS (
               (SELECT message,
                       id,
                       parent,
                       NULL::varchar AS parent_name,
                       array [id]    AS path
                FROM "Post"
-               WHERE parent = 0
-                 AND "Post".thread = treadId
-                 AND id = parent_id_array [ i]
-              )
+               WHERE parent = parent_id_array [ i]
+                 AND "Post".thread = treadId)
               UNION
               SELECT parent_name,
                      f1.id,
@@ -1037,19 +975,61 @@ BEGIN
                      tree.path || f1.id AS path
               FROM tree
                      JOIN "Post" f1 ON f1.parent = tree.id
-              )
-              SELECT tree.id
-              FROM tree
-              ORDER BY path);
-            tree_result_ids_array = array_cat(tree_result_ids_array, child_id_array);
+
+              ) SELECT tree.id
+                FROM tree
+                ORDER BY path);
+            tree_result_ids_array := array_append(tree_result_ids_array, parent_id_array [ i]);
+
+            tree_result_ids_array := array_cat(tree_result_ids_array, child_id_array);
           end loop;
 
-        FOR I IN 1..array_length(tree_result_ids_array, 1)
+        FOR i IN 1..array_length(tree_result_ids_array, 1)
           LOOP
             SELECT * INTO post_row_temp FROM public."Post" WHERE id = tree_result_ids_array [ i];
             post_row_temp_array = array_append(post_row_temp_array, post_row_temp);
           end loop;
 
+        RETURN QUERY SELECT * FROM unnest(post_row_temp_array);
+        return;
+
+      else
+        --------------------------------SINCE = 0 DESC --------------------------------------------------------------
+        parent_id_array :=
+            ARRAY(SELECT id FROM "Post" WHERE (parent = 0 AND thread = treadId) ORDER BY id DESC LIMIT limit_posts);
+        FOR i in 1..array_length(parent_id_array, 1)
+          LOOP
+            child_id_array := ARRAY(WITH RECURSIVE tree AS (
+              (SELECT message,
+                      id,
+                      parent,
+                      NULL::varchar AS parent_name,
+                      array [id]    AS path
+               FROM "Post"
+               WHERE parent = parent_id_array [ i]
+                 AND "Post".thread = treadId)
+              UNION
+              SELECT parent_name,
+                     f1.id,
+                     f1.parent,
+                     tree.message       AS parent_name,
+                     tree.path || f1.id AS path
+              FROM tree
+                     JOIN "Post" f1 ON f1.parent = tree.id
+
+              ) SELECT tree.id
+                FROM tree
+                ORDER BY path);
+            tree_result_ids_array := array_append(tree_result_ids_array, parent_id_array [ i]);
+
+            tree_result_ids_array := array_cat(tree_result_ids_array, child_id_array);
+          end loop;
+
+        FOR i IN 1..array_length(tree_result_ids_array, 1)
+          LOOP
+            SELECT * INTO post_row_temp FROM public."Post" WHERE id = tree_result_ids_array [ i];
+            post_row_temp_array = array_append(post_row_temp_array, post_row_temp);
+          end loop;
         RETURN QUERY SELECT * FROM unnest(post_row_temp_array);
         return;
       end if;
@@ -1120,35 +1100,41 @@ BEGIN
           LOOP
             SELECT * INTO post_row_temp FROM public."Post" WHERE id = filtered_with_since_array [ i];
             RAISE NOTICE '% %', post_row_temp.id, post_row_temp.parent;
-            post_row_temp_array:=array_append(post_row_temp_array, post_row_temp);
+            post_row_temp_array := array_append(post_row_temp_array, post_row_temp);
           end loop;
 
         RETURN QUERY SELECT * FROM unnest(post_row_temp_array);
         return;
 
       else
-        tree_result_ids_array := ARRAY(WITH RECURSIVE tree   AS   (
-          (SELECT message,
-                  id,
-                  parent,
-                  NULL::varchar AS parent_name,
-                  array [id]    AS path
-           FROM "Post"
-           WHERE parent = 0
-             AND "Post".thread = treadId
-           LIMIT limit_posts)
-          UNION
-          SELECT parent_name,
-                 f1.id,
-                 f1.parent,
-                 tree.message       AS parent_name,
-                 tree.path || f1.id AS path
-          FROM tree
-                 JOIN "Post" f1 ON f1.parent = tree.id
-          )
-          SELECT tree.id
-          FROM tree
-          ORDER BY path);
+        parent_id_array := ARRAY(SELECT id FROM "Post" WHERE (parent = 0 AND thread = treadId) LIMIT limit_posts);
+        FOR i in 1..array_length(parent_id_array, 1)
+          LOOP
+            child_id_array := ARRAY(WITH RECURSIVE tree AS (
+              (SELECT message,
+                      id,
+                      parent,
+                      NULL::varchar AS parent_name,
+                      array [id]    AS path
+               FROM "Post"
+               WHERE parent = parent_id_array [ i]
+                 AND "Post".thread = treadId)
+              UNION
+              SELECT parent_name,
+                     f1.id,
+                     f1.parent,
+                     tree.message       AS parent_name,
+                     tree.path || f1.id AS path
+              FROM tree
+                     JOIN "Post" f1 ON f1.parent = tree.id
+
+              ) SELECT tree.id
+                FROM tree
+                ORDER BY path);
+            tree_result_ids_array := array_append(tree_result_ids_array, parent_id_array [ i]);
+
+            tree_result_ids_array := array_cat(tree_result_ids_array, child_id_array);
+          end loop;
 
         FOR i IN 1..array_length(tree_result_ids_array, 1)
           LOOP
@@ -1165,6 +1151,7 @@ END
 $$;
 
 alter function "GetThreadPosts"(citext, integer, integer, integer, text, text) owner to postgres;
+
 
 
 create or replace function "UpdateThreadDetails"(thread_id integer, thread_slug text, new_title text, new_message text) returns SETOF "Thread"
