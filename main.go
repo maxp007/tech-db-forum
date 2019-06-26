@@ -17,14 +17,15 @@ func main() {
 	} else {
 		log.Println("Started listening on port", 5000)
 	}
-	err = database.Create()
-	if err != nil {
+	/*
+		err = database.Create()
+		if err != nil {
 
-		fmt.Print("database.Connect", err)
-	} else {
-		log.Println("Created database schema")
-	}
-
+			fmt.Print("database.Connect", err)
+		} else {
+			log.Println("Created database schema")
+		}
+	*/
 	defer func() {
 		err := database.SQLConnection.Close()
 		if err != nil {

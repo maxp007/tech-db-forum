@@ -646,7 +646,7 @@ $$;
 alter function buildtreefromnode(bigint, bigint) owner to postgres;
 
 create or replace function "GetThreadPosts"(thread_slug citext, thread_id integer, limitarg integer, sincearg integer,
-                                 sortarg text, descarg text) returns SETOF "Post"
+                                            sortarg text, descarg text) returns SETOF "Post"
   language plpgsql
 as
 $$
@@ -1067,7 +1067,7 @@ BEGIN
                   array [id]    AS path
            FROM "Post"
            WHERE parent = 0
-             AND "Post".thread = 33693
+             AND "Post".thread = treadId
           )
           UNION
           SELECT parent_name,
@@ -1090,7 +1090,7 @@ BEGIN
         node_id_found := false;
         FOR i IN 1..array_length(tree_result_ids_array, 1)
           LOOP
-            if tree_result_ids_array [ i] = 331856 then
+            if tree_result_ids_array [ i] = since_posts then
               node_id_found := true;
               CONTINUE;
             end if;
@@ -1098,7 +1098,7 @@ BEGIN
             IF node_id_found then
               SELECT * INTO post_row_temp FROM public."Post" where id = tree_result_ids_array [ i];
               if post_row_temp.parent = 0 then
-                if parents_counter < 3 then
+                if parents_counter < limit_posts then
                   --append parent
                   filtered_with_since_array := array_append(filtered_with_since_array, tree_result_ids_array [ i]);
                   parents_counter := parents_counter + 1;
