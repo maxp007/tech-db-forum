@@ -361,3 +361,97 @@ func MethodUpdateUserProfile(userprofile *models.User) (user models.User, violat
 
 	return
 }
+
+func MethodGetForumUsers(forum_slug string, limit string, since string, desc string) (users []models.User, responsecode int) {
+	conn, err := Connect()
+	tx, err := conn.Begin()
+	if err != nil {
+		log.Print("MethodGetForumUsers, Cannot begin connection")
+	}
+	defer func() {
+		err := conn.Close()
+		if err != nil {
+			log.Print("MethodGetForumUsers, Cannot close connection")
+		}
+	}()
+
+	rows, errmessage := tx.Query(`SELECT * FROM "GetForumUsers"($1,$2,$3,$4)`, forum_slug, limit, since, desc)
+	if errmessage == nil {
+		if err, ok := errmessage.(*pq.Error); ok {
+			if err.Code == "P0002" {
+				responsecode = 404
+				err := tx.Rollback()
+				if err != nil {
+					log.Print("MethodGetForumUsers, Failed to commit transaction")
+					return
+				}
+			} else {
+				responsecode = 404
+				err := tx.Rollback()
+				if err != nil {
+					log.Print("MethodGetForumUsers, Failed to commit transaction")
+					return
+				}
+			}
+		}
+		var user models.User
+		for rows.Next() {
+			err := rows.Scan(
+				&user.About,
+				&user.Email,
+				&user.Fullname,
+				&user.Nickname,
+			)
+			if err != nil {
+				fmt.Println("Failed to scan rows")
+				return
+			}
+			users = append(users, user)
+		}
+		err := rows.Err()
+		if err != nil {
+			return
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			log.Print("MethodGetForumUsers, Failed to commit transaction")
+			return
+		}
+		responsecode = 200
+		return
+
+	} else {
+		responsecode = 404
+
+		err_ := tx.Rollback()
+		if err_ != nil {
+			log.Print("MethodCreateOrGetUser, Failed to Rollback transaction")
+		}
+
+		return
+	}
+}
+
+func ServiceCleanData() (responsecode int) {
+	conn, err := Connect()
+
+	if err != nil {
+		log.Print("ServiceCleanData, Cannot begin connection")
+	}
+
+	_, errmessage := conn.Query(`SELECT * FROM "clearalldata"()`)
+	if errmessage == nil {
+		responsecode = 200
+	} else {
+		responsecode = 404
+	}
+
+	defer func() {
+		err := conn.Close()
+		if err != nil {
+			log.Print("ServiceCleanData, Cannot close connection")
+		}
+	}()
+	return
+}

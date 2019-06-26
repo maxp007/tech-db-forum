@@ -31,9 +31,20 @@ type Post struct {
 	Created  string `json:"created"`
 	Forum    string `json:"forum"`
 	Id       int    `json:"id"`
-	IsEdited string `json:"is_edited"`
+	IsEdited string `json:"-"`
 	Message  string `json:"message"`
-	Parent   int    `json:"parent"`
+	Parent   int    `json:"parent,omitempty"`
+	Thread   int    `json:"thread"`
+}
+
+type PostWithEdited struct {
+	Author   string `json:"author"`
+	Created  string `json:"created"`
+	Forum    string `json:"forum"`
+	Id       int    `json:"id"`
+	IsEdited bool   `json:"isEdited"`
+	Message  string `json:"message"`
+	Parent   int    `json:"parent,omitempty"`
 	Thread   int    `json:"thread"`
 }
 
@@ -44,44 +55,38 @@ type User struct {
 	Nickname string `json:"nickname,omitempty"`
 }
 
-type PostFull struct {
-	Author User
-	Forum  ForumResponse
-	Post   Thread
-}
-
-type PostUpdate struct {
-	description string
-	message     string
+type PostThreadUpdate struct {
+	Message string `json:"message,omitempty"`
+	Title   string `json:"title,omitempty"`
 }
 
 type Status struct {
-	Forum  int32 `json:"forum"`
-	Post   int64 `json:"post"`
-	Thread int32 `json:"thread"`
-	User   int32 `json:"user"`
+	User   *int32 `json:"user"`
+	Forum  *int32 `json:"forum"`
+	Post   *int64 `json:"post"`
+	Thread *int32 `json:"thread"`
 }
 
 type Thread struct {
 	Author  string `json:"author"`
 	Created string `json:"created"`
 	Forum   string `json:"forum"`
-	Id      int32  `json:"id"`
+	Id      int32  `json:"id,omitempty"`
 	Message string `json:"message"`
 	Slug    string `json:"slug,omitempty"`
 	Title   string `json:"title"`
-	Votes   int32  `json:"-"`
+	Votes   int32  `json:"votes"`
 }
 
 type ThreadFull struct {
 	Author  string `json:"author"`
 	Created string `json:"created"`
 	Forum   string `json:"forum"`
-	Id      int32  `json:"id"`
+	Id      int32  `json:"id,omitempty"`
 	Message string `json:"message"`
-	Slug    string `json:"slug"`
+	Slug    string `json:"slug,omitempty"`
 	Title   string `json:"title"`
-	Votes   int32  `json:"votes"`
+	Votes   int32  `json:"votes,omitempty"`
 }
 
 type ThreadNoSlug struct {
@@ -93,4 +98,53 @@ type ThreadNoSlug struct {
 	Slug    string `json:"-"`
 	Title   string `json:"title"`
 	Votes   int32  `json:"-"`
+}
+
+type Vote struct {
+	Nickname string `json:"nickname"`
+	Voice    int    `json:"voice"`
+}
+
+type ThreadDetailsParams struct {
+	Limit string
+	Since string
+	Sort  string
+	Desc  string
+}
+
+type ThreadDetails struct {
+	Message string `json:"message"`
+	Title   string `json:"title"`
+}
+
+type PostFull struct {
+	Author User           `json:"user,omitempty"`
+	Forum  ForumResponse  `json:"forum,omitempty"`
+	Post   PostWithEdited `json:"post,omitempty"`
+	Thread Thread         `json:"thread,omitempty"`
+}
+
+type PostFullOnlyPost struct {
+	Author User           `json:"-"`
+	Forum  ForumResponse  `json:"-"`
+	Post   PostWithEdited `json:"post,omitempty"`
+	Thread Thread         `json:"-"`
+}
+
+type PostFullOnlyPostAndUser struct {
+	Author *User           `json:"author,omitempty"`
+	Forum  *ForumResponse  `json:"forum,omitempty"`
+	Post   *PostWithEdited `json:"post,omitempty"`
+	Thread *Thread         `json:"thread,omitempty"`
+}
+
+type PostFullOnlyPostAndThread struct {
+	Author User           `json:"-"`
+	Forum  ForumResponse  `json:"-"`
+	Post   PostWithEdited `json:"post,omitempty"`
+	Thread Thread         `json:"thread"`
+}
+
+type PostMessageUpdate struct {
+	Message string `json:"message"`
 }

@@ -8,6 +8,7 @@ import (
 func GetRouter() (router *mux.Router) {
 
 	router = mux.NewRouter()
+	router = router.PathPrefix("/api").Subrouter()
 
 	forum := router.PathPrefix("/forum").Subrouter()
 	forum.HandleFunc("/create", handlers.PostForumCreate).Methods("POST")
@@ -26,7 +27,7 @@ func GetRouter() (router *mux.Router) {
 
 	thread := router.PathPrefix("/thread").Subrouter()
 	thread.HandleFunc("/{slug_or_id}/create", handlers.PostPostCreate).Methods("POST")
-	thread.HandleFunc("/{slug_or_id}/details", handlers.GetThreadInfo).Methods("GET")
+	thread.HandleFunc("/{slug_or_id}/details", handlers.GetThreadDetails).Methods("GET")
 	thread.HandleFunc("/{slug_or_id}/details", handlers.PostThreadUpdate).Methods("POST")
 	thread.HandleFunc("/{slug_or_id}/posts", handlers.GetThreadPosts).Methods("GET")
 	thread.HandleFunc("/{slug_or_id}/vote", handlers.PostThreadVote).Methods("POST")

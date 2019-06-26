@@ -11,7 +11,7 @@ func Create() (err error) {
 		fmt.Println("database module:create() Connect", err)
 		return
 	}
-	file, err := ioutil.ReadFile("tech-db-1.sql")
+	file, err := ioutil.ReadFile("dump.sql")
 
 	_, err = db.Exec(string(file))
 

@@ -7,6 +7,7 @@ import (
 	"github.com/maxp007/tech-db-forum/database"
 	"github.com/maxp007/tech-db-forum/models"
 	"net/http"
+	"strings"
 )
 
 func PostForumCreate(w http.ResponseWriter, r *http.Request) {
@@ -169,7 +170,7 @@ func PostThreadCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetForumThreads(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("PostThreadCreate")
+	fmt.Println("GetForumThreads")
 	w.Header().Add("Content-type", "application/json")
 
 	vars := mux.Vars(r)
@@ -228,31 +229,222 @@ func GetForumThreads(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetForumUsers(w http.ResponseWriter, r *http.Request) {
-
-}
-
 func GetPostDetails(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("GetPostDetails")
+	w.Header().Add("Content-type", "application/json")
+	vars := mux.Vars(r)
+	post_id, found := vars["id"]
+	if !found {
+		fmt.Print("Didn't find `id`.", post_id)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	err := r.ParseForm()
+	if err != nil {
+		fmt.Println("GetPostDetails ParseForm error", err)
+	}
+	a := r.Form["related"]
+	var s []string
+	if a != nil {
+		s = strings.Split(a[0], ",")
+		for i, _ := range s {
+			fmt.Println(s[i])
+		}
+	} else {
+		s = make([]string, 0)
+	}
+
+	post_full, code := database.MethodGetPostDetails(post_id, s)
+	if code != 404 {
+		w.WriteHeader(200)
+
+		bytes, err := json.Marshal(&post_full)
+		if err != nil {
+			fmt.Printf("failed to unmarshal response ")
+		}
+		_, err = w.Write(bytes)
+		if err != nil {
+			fmt.Printf("failed to write response ")
+		}
+
+	} else {
+		w.WriteHeader(404)
+		bytes, err := json.Marshal(&models.Error{fmt.Sprintf("cant find post with id", post_id)})
+		if err != nil {
+			fmt.Printf("failed to unmarshal response ")
+		}
+		_, err = w.Write(bytes)
+		if err != nil {
+			fmt.Printf("failed to write response ")
+		}
+	}
 
 }
 
 func PostPostUpdate(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("PostPostUpdate")
+	w.Header().Add("Content-type", "application/json")
+	vars := mux.Vars(r)
+	post_id, found := vars["id"]
+	if !found {
+		fmt.Print("Didn't find `id`.", post_id)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
 
+	var newPostMessage models.PostMessageUpdate
+
+	decoder := json.NewDecoder(r.Body)
+
+	err := decoder.Decode(&newPostMessage)
+	if err != nil {
+		fmt.Println("PostThreadCreate, decode err,", err)
+	}
+	post_full, code := database.MethodPostUpdate(post_id, newPostMessage.Message)
+	if code != 404 {
+		w.WriteHeader(200)
+
+		bytes, err := json.Marshal(&post_full)
+		if err != nil {
+			fmt.Printf("failed to unmarshal response ")
+		}
+		_, err = w.Write(bytes)
+		if err != nil {
+			fmt.Printf("failed to write response ")
+		}
+
+	} else {
+		w.WriteHeader(404)
+		bytes, err := json.Marshal(&models.Error{fmt.Sprintf("cant find post with id", post_id)})
+		if err != nil {
+			fmt.Printf("failed to unmarshal response ")
+		}
+		_, err = w.Write(bytes)
+		if err != nil {
+			fmt.Printf("failed to write response ")
+		}
+	}
+}
+
+func GetForumUsers(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("GetForumUsers")
+	w.Header().Add("Content-type", "application/json")
+
+	vars := mux.Vars(r)
+	forum_slug, found := vars["slug"]
+	if !found {
+		fmt.Print("Didn't find `slug`.", forum_slug)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	param_limit := r.URL.Query().Get("limit")
+	if param_limit == "" {
+		param_limit = "0"
+	}
+
+	param_since := r.URL.Query().Get("since")
+	if param_since == "" {
+		param_since = ""
+	}
+
+	param_desc := r.URL.Query().Get("desc")
+	if param_desc == "" {
+		param_desc = "false"
+	}
+
+	users, code := database.MethodGetForumUsers(forum_slug, param_limit, param_since, param_desc)
+	if code != 404 {
+		w.WriteHeader(200)
+		if len(users) == 0 {
+			_, err := w.Write([]byte("[]"))
+			if err != nil {
+				fmt.Printf("failed to write response ")
+			}
+		} else {
+			bytes, err := json.Marshal(&users)
+			if err != nil {
+				fmt.Printf("failed to unmarshal response ")
+			}
+			_, err = w.Write(bytes)
+			if err != nil {
+				fmt.Printf("failed to write response ")
+			}
+		}
+
+	} else {
+		w.WriteHeader(404)
+		bytes, err := json.Marshal(&models.Error{fmt.Sprintf("cant find forum with slug", forum_slug)})
+		if err != nil {
+			fmt.Printf("failed to unmarshal response ")
+		}
+		_, err = w.Write(bytes)
+		if err != nil {
+			fmt.Printf("failed to write response ")
+		}
+	}
 }
 
 //--------------------------SERVICE-------------------------------
 func PostServiceClear(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("PostServiceClear")
+	w.Header().Add("Content-type", "application/json")
+	code := database.ServiceCleanData()
+	if code != 200 {
+		w.WriteHeader(500)
+		_, err := w.Write([]byte("[]"))
+		if err != nil {
+			fmt.Printf("failed to write response ")
+		}
+		fmt.Println("PostServiceClear ERROR")
+		return
+	} else {
+		_, err := w.Write([]byte("[]"))
+		if err != nil {
+			fmt.Printf("failed to write response ")
+		}
+		w.WriteHeader(200)
+		return
+	}
 
 }
 
 func GetServiceStatus(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("GetServiceStatus")
+	w.Header().Add("Content-type", "application/json")
 
+	status, code := database.MethodGetServiceStatus()
+	if code == 200 {
+		w.WriteHeader(200)
+
+		bytes, err := json.Marshal(&status)
+		if err != nil {
+			fmt.Printf("failed to unmarshal response ")
+		}
+		_, err = w.Write(bytes)
+		if err != nil {
+			fmt.Printf("failed to write response ")
+		}
+
+	}
+	if code == 404 {
+		w.WriteHeader(404)
+		bytes, err := json.Marshal(&models.Error{fmt.Sprintf("cant find tread ")})
+		if err != nil {
+			fmt.Printf("failed to unmarshal response ")
+		}
+		_, err = w.Write(bytes)
+		if err != nil {
+			fmt.Printf("failed to write response ")
+		}
+	}
 }
 
 //--------------------------END SERVICE-------------------------------
 
 func PostPostCreate(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("PostThreadCreate")
+	fmt.Println("PostPostCreate")
 	w.Header().Add("Content-type", "application/json")
 
 	vars := mux.Vars(r)
@@ -296,7 +488,7 @@ func PostPostCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	if code == 404 {
 		w.WriteHeader(404)
-		bytes, err := json.Marshal(&postsSlice)
+		bytes, err := json.Marshal(&models.Error{fmt.Sprintf("cant find tread ")})
 		if err != nil {
 			fmt.Printf("failed to unmarshal response ")
 		}
@@ -307,7 +499,7 @@ func PostPostCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	if code == 409 {
 		w.WriteHeader(409)
-		bytes, err := json.Marshal(&postsSlice)
+		bytes, err := json.Marshal(&models.Error{fmt.Sprintf("Conflict 409 ")})
 		if err != nil {
 			fmt.Printf("failed to unmarshal response ")
 		}
@@ -319,19 +511,214 @@ func PostPostCreate(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func GetThreadInfo(w http.ResponseWriter, r *http.Request) {
+func PostThreadVote(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("PostThreadVote")
+	w.Header().Add("Content-type", "application/json")
 
+	vars := mux.Vars(r)
+	thread_slug_or_id, found := vars["slug_or_id"]
+
+	if !found || thread_slug_or_id == "" {
+		fmt.Print("PostThreadVote, Didn't find `slug_or_id`.", thread_slug_or_id)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	var VoteModel models.Vote
+
+	decoder := json.NewDecoder(r.Body)
+
+	err := decoder.Decode(&VoteModel)
+	if err != nil {
+		fmt.Println("PostThreadCreate, decode err,", err)
+	}
+
+	voted_thread, code := database.MethodVote(&VoteModel, thread_slug_or_id)
+	if code == 200 {
+		w.WriteHeader(200)
+
+		bytes, err := json.Marshal(&voted_thread)
+		if err != nil {
+			fmt.Printf("failed to unmarshal response ")
+		}
+		_, err = w.Write(bytes)
+		if err != nil {
+			fmt.Printf("failed to write response ")
+		}
+	}
+	if code == 404 {
+		w.WriteHeader(404)
+		bytes, err := json.Marshal(&voted_thread)
+		if err != nil {
+			fmt.Printf("failed to unmarshal response ")
+		}
+		_, err = w.Write(bytes)
+		if err != nil {
+			fmt.Printf("failed to write response ")
+		}
+	}
 }
 
-func PostThreadUpdate(w http.ResponseWriter, r *http.Request) {
+func GetThreadDetails(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("GetThreadDetails")
+	w.Header().Add("Content-type", "application/json")
+
+	vars := mux.Vars(r)
+	thread_slug_or_id, found := vars["slug_or_id"]
+
+	if !found || thread_slug_or_id == "" {
+		fmt.Print("GetThreadDetails, Didn't find `slug_or_id`.", thread_slug_or_id)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	thread, code := database.MethodGetDetails(thread_slug_or_id)
+	if code == 200 {
+		w.WriteHeader(200)
+
+		bytes, err := json.Marshal(&thread)
+		if err != nil {
+			fmt.Printf("failed to unmarshal response ")
+		}
+		_, err = w.Write(bytes)
+		if err != nil {
+			fmt.Printf("failed to write response ")
+		}
+
+	} else {
+		w.WriteHeader(404)
+		bytes, err := json.Marshal(&models.Error{fmt.Sprintf("cant find thread_slug_or_id", thread_slug_or_id)})
+		if err != nil {
+			fmt.Printf("failed to unmarshal response ")
+		}
+		_, err = w.Write(bytes)
+		if err != nil {
+			fmt.Printf("failed to write response ")
+		}
+	}
 
 }
 
 func GetThreadPosts(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("GetThreadDetails")
+	w.Header().Add("Content-type", "application/json")
+
+	vars := mux.Vars(r)
+	thread_slug_or_id, found := vars["slug_or_id"]
+
+	if !found || thread_slug_or_id == "" {
+		fmt.Print("GetThreadDetails, Didn't find `slug_or_id`.", thread_slug_or_id)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	param_limit := r.URL.Query().Get("limit")
+	if param_limit == "" {
+		param_limit = "0"
+	}
+
+	param_since := r.URL.Query().Get("since")
+	if param_since == "" {
+		param_since = "0"
+	}
+
+	param_sort := r.URL.Query().Get("sort")
+
+	if param_sort != "flat" &&
+		param_sort != "tree" &&
+		param_sort != "parent_tree" {
+		param_sort = "flat"
+	}
+
+	param_desc := r.URL.Query().Get("desc")
+	if param_desc == "" {
+		param_desc = "false"
+	}
+
+	var params_struct models.ThreadDetailsParams
+	params_struct.Desc = param_desc
+	params_struct.Limit = param_limit
+	params_struct.Since = param_since
+	params_struct.Sort = param_sort
+
+	posts, code := database.MethodGetThreadPosts(thread_slug_or_id, params_struct)
+	if code == 200 {
+		w.WriteHeader(200)
+		if len(posts) == 0 {
+			_, err := w.Write([]byte("[]"))
+			if err != nil {
+				fmt.Printf("failed to write response ")
+			}
+		} else {
+			bytes, err := json.Marshal(&posts)
+			if err != nil {
+				fmt.Printf("failed to unmarshal response ")
+			}
+			_, err = w.Write(bytes)
+			if err != nil {
+				fmt.Printf("failed to write response ")
+			}
+		}
+
+	} else {
+		w.WriteHeader(404)
+		bytes, err := json.Marshal(&models.Error{fmt.Sprintf("cant find thread_slug_or_id", thread_slug_or_id)})
+		if err != nil {
+			fmt.Printf("failed to unmarshal response ")
+		}
+		_, err = w.Write(bytes)
+		if err != nil {
+			fmt.Printf("failed to write response ")
+		}
+	}
 
 }
 
-func PostThreadVote(w http.ResponseWriter, r *http.Request) {
+func PostThreadUpdate(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("GetThreadPosts")
+	w.Header().Add("Content-type", "application/json")
+
+	vars := mux.Vars(r)
+	thread_slug_or_id, found := vars["slug_or_id"]
+
+	if !found || thread_slug_or_id == "" {
+		fmt.Print("GetThreadDetails, Didn't find `slug_or_id`.", thread_slug_or_id)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	var post_update_struct models.PostThreadUpdate
+
+	decoder := json.NewDecoder(r.Body)
+
+	err := decoder.Decode(&post_update_struct)
+	if err != nil {
+		fmt.Println("PostThreadCreate, decode err,", err)
+	}
+	new_thread_details, code := database.MethodUpdateThreadDetails(thread_slug_or_id, post_update_struct)
+	if code == 200 {
+		w.WriteHeader(200)
+
+		bytes, err := json.Marshal(&new_thread_details)
+		if err != nil {
+			fmt.Printf("failed to unmarshal response ")
+		}
+		_, err = w.Write(bytes)
+		if err != nil {
+			fmt.Printf("failed to write response ")
+		}
+
+	} else {
+		w.WriteHeader(404)
+		bytes, err := json.Marshal(&models.Error{fmt.Sprintf("cant find thread_slug_or_id", thread_slug_or_id)})
+		if err != nil {
+			fmt.Printf("failed to unmarshal response ")
+		}
+		_, err = w.Write(bytes)
+		if err != nil {
+			fmt.Printf("failed to write response ")
+		}
+	}
 
 }
 

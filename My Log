@@ -1,0 +1,8 @@
+Added unique constaint to User.nickname, User.Email
+
+Added foreign key constraint to Forum.user <<-------> User.nickname
+
+
+
+
+
