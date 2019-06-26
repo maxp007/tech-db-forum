@@ -32,8 +32,6 @@ func Connect() (db *sql.DB, err error) {
 		host, port, user, password, dbname)
 
 	db, err = sql.Open("postgres", connString)
-	db.SetMaxOpenConns(5)
-	db.SetMaxIdleConns(5)
 	if err != nil {
 		fmt.Print("Connection open error", err)
 		return

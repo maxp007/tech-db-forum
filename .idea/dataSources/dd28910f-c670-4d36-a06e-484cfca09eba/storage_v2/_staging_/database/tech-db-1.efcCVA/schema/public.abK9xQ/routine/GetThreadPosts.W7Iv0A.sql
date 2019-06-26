@@ -1,5 +1,6 @@
-create function "GetThreadPosts"(thread_slug citext, thread_id integer, limitarg integer, sincearg integer,
-                                 sortarg text, descarg text) returns SETOF "Post"
+create or replace function "GetThreadPosts"(thread_slug citext, thread_id integer,
+                                            limitarg integer, sincearg integer,
+                                            sortarg text, descarg text) returns SETOF "Post"
   language plpgsql
 as
 $$
@@ -108,8 +109,6 @@ BEGIN
           FROM tree
           ORDER BY path DESC);
 
-        --RAISE EXCEPTION '% % % % % ',tree_result_ids_array[1], (tree_result_ids_array)[2],(tree_result_ids_array)[3],(tree_result_ids_array)[4],(tree_result_ids_array)[5];
-        --https://coderwall.com/p/jmtskw/use-in-instead-of-any-in-postgresql
 
         -------------------FILTERING PART--------------------------
 
@@ -170,8 +169,6 @@ BEGIN
           FROM tree
           ORDER BY path DESC);
 
-        --RAISE EXCEPTION '% % % % % ',tree_result_ids_array[1], (tree_result_ids_array)[2],(tree_result_ids_array)[3],(tree_result_ids_array)[4],(tree_result_ids_array)[5];
-        --https://coderwall.com/p/jmtskw/use-in-instead-of-any-in-postgresql
 
         FOR I IN 1..array_length(tree_result_ids_array, 1)
           LOOP
@@ -209,28 +206,28 @@ BEGIN
           FROM tree
           ORDER BY path);
 
-          FOR i IN 1..array_length(tree_result_ids_array, 1)
-            LOOP
-              if tree_result_ids_array [ i] = since_posts then
-                node_id_found := true;
-                CONTINUE;
-              end if;
+        FOR i IN 1..array_length(tree_result_ids_array, 1)
+          LOOP
+            if tree_result_ids_array [ i] = since_posts then
+              node_id_found := true;
+              CONTINUE;
+            end if;
 
-              if array_length(filtered_with_since_array, 1) IS NULL AND node_id_found then
-                filtered_with_since_array = array_append(filtered_with_since_array, tree_result_ids_array [ i]);
-                CONTINUE;
-              end if;
+            if array_length(filtered_with_since_array, 1) IS NULL AND node_id_found then
+              filtered_with_since_array = array_append(filtered_with_since_array, tree_result_ids_array [ i]);
+              CONTINUE;
+            end if;
 
-              if array_length(filtered_with_since_array, 1) > 0 AND
-                 array_length(filtered_with_since_array, 1) < limit_posts and node_id_found then
-                filtered_with_since_array = array_append(filtered_with_since_array, tree_result_ids_array [ i]);
-              end if;
+            if array_length(filtered_with_since_array, 1) > 0 AND
+               array_length(filtered_with_since_array, 1) < limit_posts and node_id_found then
+              filtered_with_since_array = array_append(filtered_with_since_array, tree_result_ids_array [ i]);
+            end if;
 
-              if array_length(filtered_with_since_array, 1) = limit_posts and node_id_found then
-                EXIT;
-              end if;
+            if array_length(filtered_with_since_array, 1) = limit_posts and node_id_found then
+              EXIT;
+            end if;
 
-            end loop;
+          end loop;
 
 
         FOR i IN 1..array_length(filtered_with_since_array, 1)
@@ -313,7 +310,7 @@ BEGIN
 
         if array_length(tree_result_ids_array, 1) IS NULL or array_length(tree_result_ids_array, 1) = 0 then
           RAISE EXCEPTION 'empty tree_result_ids_array ARRAY'  USING ERRCODE = 'P0001';
-          RETURN;
+
         end if;
 
         node_id_found := false;
@@ -342,7 +339,6 @@ BEGIN
 
         if array_length(filtered_with_since_array, 1) IS NULL or array_length(filtered_with_since_array, 1) = 0 then
           RAISE NOTICE 'empty filtered_with_since_array ARRAY' USING ERRCODE = 'P0001';
-          ;
           RETURN;
         end if;
 
@@ -480,8 +476,6 @@ BEGIN
         RETURN QUERY SELECT * FROM unnest(post_row_temp_array);
         return;
 
-
-
       else
         tree_result_ids_array := ARRAY(WITH RECURSIVE tree   AS   (
           (SELECT message,
@@ -517,10 +511,5 @@ BEGIN
 
     end if;
   end if;
-
-
 END
 $$;
-
-alter function "GetThreadPosts"(citext, integer, integer, integer, text, text) owner to postgres;
-

@@ -175,52 +175,53 @@ func MethodGetThreads(forum_slug string, limit string, since string, desc string
 	fmt.Println("MethodGetThreads")
 
 	conn, err := Connect()
-	tx, err := conn.Begin()
 	if err != nil {
-		log.Print("MethodGetThreads, Cannot begin transaction")
+		fmt.Println("")
 	}
+	defer func() {
+		err = conn.Close()
+		if err != nil {
+			log.Print("MethodGetThreads, Cannot close connection")
+		}
+	}()
 	var rows *sql.Rows
 	var errmessage error
 
-	rows, errmessage = tx.Query(`SELECT * FROM public."Forum" where slug=$1 `, forum_slug)
+	rows, errmessage = conn.Query(`SELECT * FROM public."Forum" where slug=$1 `, forum_slug)
 	forum_found := false
 	for rows.Next() {
 		forum_found = true
 	}
 	if !forum_found {
 		responsecode = 404
-		err := tx.Rollback()
-		if err != nil {
-			log.Print("MethodGetThreads, Failed to commit transaction")
-			return
-		}
+
 		return
 	}
 	if since == "1970-01-01T12:00:00.000Z" {
 		if desc == "true" {
-			rows, errmessage = tx.Query(`SELECT * FROM public."Thread" where forum=$1  ORDER BY created DESC LIMIT $2::INTEGER;`,
+			rows, errmessage = conn.Query(`SELECT * FROM public."Thread" where forum=$1  ORDER BY created DESC LIMIT $2::INTEGER;`,
 				forum_slug, limit)
 		} else {
-			rows, errmessage = tx.Query(`SELECT * FROM public."Thread" where forum=$1  ORDER BY created ASC LIMIT $2::INTEGER;`,
+			rows, errmessage = conn.Query(`SELECT * FROM public."Thread" where forum=$1  ORDER BY created ASC LIMIT $2::INTEGER;`,
 				forum_slug, limit)
 		}
 	} else {
 		if limit == "4" {
 			if desc == "true" {
-				rows, errmessage = tx.Query(`SELECT * FROM public."Thread" where (forum=$1 AND created <= $2::timestamptz) ORDER BY created DESC LIMIT $3::INTEGER;`,
+				rows, errmessage = conn.Query(`SELECT * FROM public."Thread" where (forum=$1 AND created <= $2::timestamptz) ORDER BY created DESC LIMIT $3::INTEGER;`,
 					forum_slug, since, limit)
 			} else {
-				rows, errmessage = tx.Query(`SELECT * FROM public."Thread" where (forum=$1 AND created >= $2::timestamptz) ORDER BY created ASC LIMIT $3::INTEGER;`,
+				rows, errmessage = conn.Query(`SELECT * FROM public."Thread" where (forum=$1 AND created >= $2::timestamptz) ORDER BY created ASC LIMIT $3::INTEGER;`,
 					forum_slug, since, limit)
 			}
 
 		} else {
 
 			if desc == "true" {
-				rows, errmessage = tx.Query(`SELECT * FROM public."Thread" where (forum=$1 AND created >= $2::timestamptz) ORDER BY created DESC LIMIT $3::INTEGER;`,
+				rows, errmessage = conn.Query(`SELECT * FROM public."Thread" where (forum=$1 AND created >= $2::timestamptz) ORDER BY created DESC LIMIT $3::INTEGER;`,
 					forum_slug, since, limit)
 			} else {
-				rows, errmessage = tx.Query(`SELECT * FROM public."Thread" where (forum=$1 AND created >= $2::timestamptz) ORDER BY created ASC LIMIT $3::INTEGER;`,
+				rows, errmessage = conn.Query(`SELECT * FROM public."Thread" where (forum=$1 AND created >= $2::timestamptz) ORDER BY created ASC LIMIT $3::INTEGER;`,
 					forum_slug, since, limit)
 			}
 		}
@@ -231,11 +232,7 @@ func MethodGetThreads(forum_slug string, limit string, since string, desc string
 			fmt.Println(err)
 		}
 		responsecode = 404
-		err := tx.Rollback()
-		if err != nil {
-			log.Print("MethodGetThreads, Failed to commit transaction")
-			return
-		}
+
 		return
 	}
 	var thread models.ThreadFull
@@ -260,11 +257,7 @@ func MethodGetThreads(forum_slug string, limit string, since string, desc string
 	}
 	if !threads_exist {
 		responsecode = 200
-		err := tx.Rollback()
-		if err != nil {
-			log.Print("MethodGetThreads, Failed to commit transaction")
-			return
-		}
+
 		return
 	}
 	err = rows.Err()
@@ -274,18 +267,8 @@ func MethodGetThreads(forum_slug string, limit string, since string, desc string
 		return
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		log.Print("MethodGetThreads, Failed to commit transaction")
-		return
-	}
 	responsecode = 201
-	defer func() {
-		err = conn.Close()
-		if err != nil {
-			log.Print("MethodGetThreads, Cannot close connection")
-		}
-	}()
+
 	return
 
 }
@@ -744,10 +727,6 @@ func MethodUpdateThreadDetails(thread_slug_or_id string, update models.PostThrea
 
 func MethodGetPostDetails(thread_id string, a []string) (post_details models.PostFullOnlyPostAndUser, responsecode int) {
 	conn, err := Connect()
-	tx, err := conn.Begin()
-	if err != nil {
-		log.Print("MethodGetPostDetails, Cannot begin transaction")
-	}
 
 	defer func() {
 		err = conn.Close()
@@ -756,17 +735,13 @@ func MethodGetPostDetails(thread_id string, a []string) (post_details models.Pos
 		}
 	}()
 
-	rows, errmessage := tx.Query(`SELECT * FROM public."Post" where id=$1`, thread_id)
+	rows, errmessage := conn.Query(`SELECT * FROM public."Post" where id=$1`, thread_id)
 	if errmessage != nil {
 		if err, ok := errmessage.(*pq.Error); ok {
 			fmt.Println(err)
 		}
 		responsecode = 404
-		err := tx.Rollback()
-		if err != nil {
-			log.Print("MethodGetPostDetails, Failed to commit transaction")
-			return
-		}
+
 		return
 	} else {
 		responsecode = 200
@@ -799,17 +774,12 @@ func MethodGetPostDetails(thread_id string, a []string) (post_details models.Pos
 	for i, _ := range a {
 		if a[i] == "user" {
 			post_details.Author = &models.User{}
-			rows, errmessage := tx.Query(`SELECT * FROM public."User" where nickname=$1::citext`, post_details.Post.Author)
+			rows, errmessage := conn.Query(`SELECT * FROM public."User" where nickname=$1::citext`, post_details.Post.Author)
 			if errmessage != nil {
 				if err, ok := errmessage.(*pq.Error); ok {
 					fmt.Println(err)
 				}
 				responsecode = 404
-				err := tx.Rollback()
-				if err != nil {
-					log.Print("MethodGetPostDetails, Failed to commit transaction")
-					return
-				}
 				return
 			} else {
 				responsecode = 200
@@ -837,17 +807,13 @@ func MethodGetPostDetails(thread_id string, a []string) (post_details models.Pos
 		}
 		if a[i] == "forum" {
 			post_details.Forum = &models.ForumResponse{}
-			rows, errmessage := tx.Query(`SELECT * FROM public."Forum" where slug=$1::citext`, post_details.Post.Forum)
+			rows, errmessage := conn.Query(`SELECT * FROM public."Forum" where slug=$1::citext`, post_details.Post.Forum)
 			if errmessage != nil {
 				if err, ok := errmessage.(*pq.Error); ok {
 					fmt.Println(err)
 				}
 				responsecode = 404
-				err := tx.Rollback()
-				if err != nil {
-					log.Print("MethodGetPostDetails, Failed to commit transaction")
-					return
-				}
+
 				return
 			} else {
 				responsecode = 200
@@ -876,17 +842,13 @@ func MethodGetPostDetails(thread_id string, a []string) (post_details models.Pos
 		}
 		if a[i] == "thread" {
 			post_details.Thread = &models.Thread{}
-			rows, errmessage := tx.Query(`SELECT * FROM public."Thread" where id=$1`, post_details.Post.Thread)
+			rows, errmessage := conn.Query(`SELECT * FROM public."Thread" where id=$1`, post_details.Post.Thread)
 			if errmessage != nil {
 				if err, ok := errmessage.(*pq.Error); ok {
 					fmt.Println(err)
 				}
 				responsecode = 404
-				err := tx.Rollback()
-				if err != nil {
-					log.Print("MethodGetPostDetails, Failed to commit transaction")
-					return
-				}
+
 				return
 			} else {
 				responsecode = 200
@@ -923,13 +885,6 @@ func MethodGetPostDetails(thread_id string, a []string) (post_details models.Pos
 
 		return
 	}
-
-	err = tx.Commit()
-	if err != nil {
-		log.Print("MethodGetPostDetails, Failed to commit transaction")
-		return
-	}
-
 	return
 }
 
@@ -1001,10 +956,6 @@ func MethodPostUpdate(post_id string, newMessage string) (post models.PostWithEd
 
 func MethodGetServiceStatus() (status models.Status, responsecode int) {
 	conn, err := Connect()
-	tx, err := conn.Begin()
-	if err != nil {
-		log.Print("MethodGetServiceStatus, Cannot begin transaction")
-	}
 
 	defer func() {
 		err = conn.Close()
@@ -1013,18 +964,14 @@ func MethodGetServiceStatus() (status models.Status, responsecode int) {
 		}
 	}()
 
-	rows, errmessage := tx.Query(`SELECT * FROM "GetServiceStatus"()`)
+	rows, errmessage := conn.Query(`SELECT * FROM "GetServiceStatus"()`)
 	if errmessage != nil {
 		if err, ok := errmessage.(*pq.Error); ok {
 
 			fmt.Println(err)
 		}
 		responsecode = 404
-		err := tx.Rollback()
-		if err != nil {
-			log.Print("MethodGetServiceStatus, Failed to commit transaction")
-			return
-		}
+
 		return
 	}
 	for rows.Next() {
@@ -1047,11 +994,6 @@ func MethodGetServiceStatus() (status models.Status, responsecode int) {
 		return
 	}
 	responsecode = 200
-	err = tx.Commit()
-	if err != nil {
-		log.Print("MethodGetServiceStatus, Failed to commit transaction")
-		return
-	}
 
 	return
 

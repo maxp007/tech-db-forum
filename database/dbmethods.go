@@ -115,11 +115,7 @@ func MethodCreateOrGetForum(in *models.ForumRequest) (forum models.ForumResponse
 
 func MethodGetForumDetails(slug string) (forum models.ForumRequest, responsecode int) {
 	conn, err := Connect()
-	tx, err := conn.Begin()
-	if err != nil {
-		log.Print("CreateOrGetForum, Cannot begin transaction")
-		return
-	}
+
 	defer func() {
 		err := conn.Close()
 		if err != nil {
@@ -127,7 +123,7 @@ func MethodGetForumDetails(slug string) (forum models.ForumRequest, responsecode
 		}
 	}()
 
-	rows, errmessage := tx.Query(`SELECT * FROM public."Forum" WHERE slug=$1::citext`, slug)
+	rows, errmessage := conn.Query(`SELECT * FROM public."Forum" WHERE slug=$1::citext`, slug)
 	if errmessage == nil {
 		responsecode = 404
 		for rows.Next() {
@@ -149,15 +145,7 @@ func MethodGetForumDetails(slug string) (forum models.ForumRequest, responsecode
 		if err != nil {
 			return
 		}
-
-		err = tx.Commit()
-		if err != nil {
-			log.Print("CreateOrGetForum, Failed to commit transaction")
-			return
-		}
-
 		return
-
 	}
 	return
 }
@@ -263,11 +251,7 @@ func MethodCreateOrGetUser(in *models.User) (users []models.User, violationflag 
 
 func MethodGetUserProfile(nickname string) (user models.User, violationflag int) {
 	conn, err := Connect()
-	tx, err := conn.Begin()
-	if err != nil {
-		log.Print("CreateOrGetForum, Cannot begin transaction")
-		return
-	}
+
 	defer func() {
 		err := conn.Close()
 		if err != nil {
@@ -275,7 +259,7 @@ func MethodGetUserProfile(nickname string) (user models.User, violationflag int)
 		}
 	}()
 
-	row := tx.QueryRow(`SELECT * FROM public."User" Where nickname=$1`, nickname)
+	row := conn.QueryRow(`SELECT * FROM public."User" Where nickname=$1`, nickname)
 	err = row.Scan(
 		&user.About,
 		&user.Email,
@@ -286,12 +270,6 @@ func MethodGetUserProfile(nickname string) (user models.User, violationflag int)
 		violationflag = 1
 	} else {
 		violationflag = 0
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		log.Print("CreateOrGetForum, Failed to commit transaction")
-		return
 	}
 
 	return
@@ -364,9 +342,8 @@ func MethodUpdateUserProfile(userprofile *models.User) (user models.User, violat
 
 func MethodGetForumUsers(forum_slug string, limit string, since string, desc string) (users []models.User, responsecode int) {
 	conn, err := Connect()
-	tx, err := conn.Begin()
 	if err != nil {
-		log.Print("MethodGetForumUsers, Cannot begin connection")
+		log.Print("MethodGetForumUsers, Cannot open connection")
 	}
 	defer func() {
 		err := conn.Close()
@@ -375,23 +352,14 @@ func MethodGetForumUsers(forum_slug string, limit string, since string, desc str
 		}
 	}()
 
-	rows, errmessage := tx.Query(`SELECT * FROM "GetForumUsers"($1,$2,$3,$4)`, forum_slug, limit, since, desc)
+	rows, errmessage := conn.Query(`SELECT * FROM "GetForumUsers"($1,$2,$3,$4)`, forum_slug, limit, since, desc)
 	if errmessage == nil {
 		if err, ok := errmessage.(*pq.Error); ok {
 			if err.Code == "P0002" {
 				responsecode = 404
-				err := tx.Rollback()
-				if err != nil {
-					log.Print("MethodGetForumUsers, Failed to commit transaction")
-					return
-				}
 			} else {
 				responsecode = 404
-				err := tx.Rollback()
-				if err != nil {
-					log.Print("MethodGetForumUsers, Failed to commit transaction")
-					return
-				}
+
 			}
 		}
 		var user models.User
@@ -413,22 +381,10 @@ func MethodGetForumUsers(forum_slug string, limit string, since string, desc str
 			return
 		}
 
-		err = tx.Commit()
-		if err != nil {
-			log.Print("MethodGetForumUsers, Failed to commit transaction")
-			return
-		}
 		responsecode = 200
 		return
-
 	} else {
 		responsecode = 404
-
-		err_ := tx.Rollback()
-		if err_ != nil {
-			log.Print("MethodCreateOrGetUser, Failed to Rollback transaction")
-		}
-
 		return
 	}
 }

@@ -645,7 +645,7 @@ $$;
 
 alter function buildtreefromnode(bigint, bigint) owner to postgres;
 
-create function "GetThreadPosts"(thread_slug citext, thread_id integer, limitarg integer, sincearg integer,
+create or replace function "GetThreadPosts"(thread_slug citext, thread_id integer, limitarg integer, sincearg integer,
                                  sortarg text, descarg text) returns SETOF "Post"
   language plpgsql
 as
@@ -1127,8 +1127,6 @@ BEGIN
         RETURN QUERY SELECT * FROM unnest(post_row_temp_array);
         return;
 
-
-
       else
         tree_result_ids_array := ARRAY(WITH RECURSIVE tree   AS   (
           (SELECT message,
@@ -1164,13 +1162,10 @@ BEGIN
 
     end if;
   end if;
-
-
 END
 $$;
 
 alter function "GetThreadPosts"(citext, integer, integer, integer, text, text) owner to postgres;
-
 
 
 
