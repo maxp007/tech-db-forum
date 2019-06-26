@@ -17,6 +17,7 @@ const (
 var SQLConnection *sql.DB
 
 func Connect() (db *sql.DB, err error) {
+
 	connString := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)

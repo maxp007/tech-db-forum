@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS citext;
+
 create type users_query_result as
   (
   users "User"[],
