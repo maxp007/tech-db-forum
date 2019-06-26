@@ -28,12 +28,17 @@ EXPOSE $PORT
 USER postgres
 
 RUN /etc/init.d/postgresql start &&\
-	createdb tech-db-1 &&\
-	psql --echo-all --command "CREATE USER max007 WITH SUPERUSER PASSWORD '12345qwerty';" &&\
-	psql -d tech-db-1 -f database/dump.sql &&\
-	
+	psql --echo-all --command "CREATE USER docker WITH SUPERUSER PASSWORD 'docker';" &&\
+	createdb -O docker docker &&\
+	psql -d docker -f database/dump.sql &&\
 	/etc/init.d/postgresql stop
 
+RUN rm -rf /etc/postgresql/$PGSQLVER/main/pg_hba.conf
+RUN echo "local   all             postgres                                peer\n\
+local   all             docker                                md5\n\
+host    all             all             127.0.0.1/32            md5\n\
+host all  all    0.0.0.0/0  md5" >>\
+    /etc/postgresql/$PGSQLVER/main/pg_hba.conf
 
 RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/$PGSQLVER/main/pg_hba.conf &&\
 	echo "listen_addresses='*'" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf &&\
@@ -52,7 +57,19 @@ RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/$PGSQLVER/main/pg_
 	echo "wal_level = minimal" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf &&\
 	echo "max_wal_senders = 0" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf
 
+EXPOSE 5432
 
 USER root
 
 CMD service postgresql start && go run main.go
+
+
+
+USER postgres
+
+RUN /etc/init.d/postgresql start &&\
+	psql --echo-all --command "CREATE USER docker WITH SUPERUSER PASSWORD 'docker';" &&\
+	createdb -O docker docker &&\
+	psql -d docker -f main_microservice/database/sql.sql &&\
+	/etc/init.d/postgresql stop
+
