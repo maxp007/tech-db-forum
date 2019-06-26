@@ -989,7 +989,6 @@ BEGIN
 
         if array_length(filtered_with_since_array, 1) IS NULL or array_length(filtered_with_since_array, 1) = 0 then
           RAISE NOTICE 'empty filtered_with_since_array ARRAY' USING ERRCODE = 'P0001';
-          ;
           RETURN;
         end if;
 
@@ -1166,7 +1165,6 @@ END
 $$;
 
 alter function "GetThreadPosts"(citext, integer, integer, integer, text, text) owner to postgres;
-
 
 
 create or replace function "UpdateThreadDetails"(thread_id integer, thread_slug text, new_title text, new_message text) returns SETOF "Thread"
