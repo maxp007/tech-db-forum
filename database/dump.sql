@@ -3,13 +3,7 @@ create extension if not exists "uuid-ossp";
 
 create extension if not exists "citext";
 
-create type users_query_result as
-  (
-  users "User"[],
-  status integer
-  );
 
-alter type users_query_result owner to postgres;
 
 -- Unknown how to generate base type type
 
@@ -86,6 +80,14 @@ create table "User"
 
 alter table "User"
   owner to postgres;
+
+create type users_query_result as
+  (
+  users "User"[],
+  status integer
+  );
+
+alter type users_query_result owner to postgres;
 
 create table "Forum"
 (

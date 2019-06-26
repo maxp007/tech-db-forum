@@ -6,6 +6,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
+/*
 const (
 	host     = "localhost"
 	port     = 5432
@@ -13,8 +14,8 @@ const (
 	password = "12345qwerty"
 	dbname   = "tech-db-1"
 )
+*/
 
-/*
 const (
 	host     = "localhost"
 	port     = 5432
@@ -22,7 +23,7 @@ const (
 	password = "docker"
 	dbname   = "docker"
 )
-*/
+
 var SQLConnection *sql.DB
 
 func Connect() (db *sql.DB, err error) {
