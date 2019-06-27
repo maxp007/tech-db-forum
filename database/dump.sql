@@ -186,6 +186,9 @@ create table "Vote"
       on update cascade on delete cascade
 );
 
+ALTER TABLE "Vote"
+ADD UNIQUE (nickname, thread);
+
 alter table "Vote"
   owner to postgres;
 
