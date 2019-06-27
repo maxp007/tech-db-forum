@@ -34,13 +34,17 @@ RUN /etc/init.d/postgresql start &&\
 	/etc/init.d/postgresql stop
 
 
-
 RUN rm -rf /etc/postgresql/$PGSQLVER/main/pg_hba.conf
 RUN echo "local   all             postgres                                peer\n\
 local   all             docker                                md5\n\
 host    all             all             127.0.0.1/32            md5\n\
 host all  all    0.0.0.0/0  md5" >>\
     /etc/postgresql/$PGSQLVER/main/pg_hba.conf
+
+
+RUN echo "effective_cache_size = 1GB" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf
+RUN echo "log_statement = 'none'" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf
+RUN echo "full_page_writes = off" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf
 
 RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/$PGSQLVER/main/pg_hba.conf &&\
 	echo "listen_addresses='*'" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf &&\
@@ -57,7 +61,12 @@ RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/$PGSQLVER/main/pg_
 	echo "cpu_index_tuple_cost = 0.0005" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf &&\
 	echo "autovacuum = on" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf &&\
 	echo "wal_level = minimal" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf &&\
-	echo "max_wal_senders = 0" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf
+	echo "min_wal_size = 512MB" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf&&\
+	echo "max_wal_size = 1GB" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf&&\
+	echo "max_wal_senders = 0" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf &&\
+	echo "max_parallel_workers = 4" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf&&\
+	echo "max_parallel_workers_per_gather = 4" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf&&\
+	echo "max_worker_processes = 8" >> /etc/postgresql/$PGSQLVER/main/postgresql.conf&&\
 
 EXPOSE 5432
 

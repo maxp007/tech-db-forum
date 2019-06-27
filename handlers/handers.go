@@ -23,7 +23,7 @@ func PostForumCreate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println("PostForumCreate, decode err,", err)
 	}
-	forum, code := database.MethodCreateOrGetForum(&ForumRequest)
+	forum, code := database.GetInstance().MethodCreateOrGetForum(&ForumRequest)
 	if code == 409 {
 		fmt.Println(`PostForumCreate, MethodCreateOrGetForum error`, err)
 		w.WriteHeader(http.StatusConflict)
@@ -69,7 +69,7 @@ func PostForumCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetForumDetails(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("GetForumDetails")
+	//fmt.Println("GetForumDetails")
 	w.Header().Add("Content-type", "application/json")
 
 	vars := mux.Vars(r)
@@ -79,7 +79,7 @@ func GetForumDetails(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	forum, code := database.MethodGetForumDetails(slug)
+	forum, code := database.GetInstance().MethodGetForumDetails(slug)
 	if code != 404 {
 		w.WriteHeader(200)
 		bytes, err := json.Marshal(&forum)
@@ -105,7 +105,7 @@ func GetForumDetails(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostThreadCreate(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("PostThreadCreate")
+	//fmt.Println("PostThreadCreate")
 	w.Header().Add("Content-type", "application/json")
 
 	vars := mux.Vars(r)
@@ -126,7 +126,7 @@ func PostThreadCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	thread_slug := ThreadModel.Slug
 	ThreadModel.Forum = forum_slug
-	thread, code := database.MethodCreateOrGetThread(&ThreadModel)
+	thread, code := database.GetInstance().MethodCreateOrGetThread(&ThreadModel)
 	if code == 201 {
 		if thread_slug == "" {
 			thread.Slug = ""
@@ -170,7 +170,7 @@ func PostThreadCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetForumThreads(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("GetForumThreads")
+	//fmt.Println("GetForumThreads")
 	w.Header().Add("Content-type", "application/json")
 
 	vars := mux.Vars(r)
@@ -196,7 +196,7 @@ func GetForumThreads(w http.ResponseWriter, r *http.Request) {
 		param_desc = "false"
 	}
 
-	threads, code := database.MethodGetThreads(forum_slug, param_limit, param_since, param_desc)
+	threads, code := database.GetInstance().MethodGetThreads(forum_slug, param_limit, param_since, param_desc)
 	if code != 404 {
 		w.WriteHeader(200)
 		if len(threads) == 0 {
@@ -230,7 +230,7 @@ func GetForumThreads(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetPostDetails(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("GetPostDetails")
+	//fmt.Println("GetPostDetails")
 	w.Header().Add("Content-type", "application/json")
 	vars := mux.Vars(r)
 	post_id, found := vars["id"]
@@ -255,7 +255,7 @@ func GetPostDetails(w http.ResponseWriter, r *http.Request) {
 		s = make([]string, 0)
 	}
 
-	post_full, code := database.MethodGetPostDetails(post_id, s)
+	post_full, code := database.GetInstance().MethodGetPostDetails(post_id, s)
 	if code != 404 {
 		w.WriteHeader(200)
 
@@ -283,7 +283,7 @@ func GetPostDetails(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostPostUpdate(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("PostPostUpdate")
+	//fmt.Println("PostPostUpdate")
 	w.Header().Add("Content-type", "application/json")
 	vars := mux.Vars(r)
 	post_id, found := vars["id"]
@@ -301,7 +301,7 @@ func PostPostUpdate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println("PostThreadCreate, decode err,", err)
 	}
-	post_full, code := database.MethodPostUpdate(post_id, newPostMessage.Message)
+	post_full, code := database.GetInstance().MethodPostUpdate(post_id, newPostMessage.Message)
 	if code != 404 {
 		w.WriteHeader(200)
 
@@ -328,7 +328,7 @@ func PostPostUpdate(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetForumUsers(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("GetForumUsers")
+	//fmt.Println("GetForumUsers")
 	w.Header().Add("Content-type", "application/json")
 
 	vars := mux.Vars(r)
@@ -354,7 +354,7 @@ func GetForumUsers(w http.ResponseWriter, r *http.Request) {
 		param_desc = "false"
 	}
 
-	users, code := database.MethodGetForumUsers(forum_slug, param_limit, param_since, param_desc)
+	users, code := database.GetInstance().MethodGetForumUsers(forum_slug, param_limit, param_since, param_desc)
 	if code != 404 {
 		w.WriteHeader(200)
 		if len(users) == 0 {
@@ -390,7 +390,7 @@ func GetForumUsers(w http.ResponseWriter, r *http.Request) {
 func PostServiceClear(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("PostServiceClear")
 	w.Header().Add("Content-type", "application/json")
-	code := database.ServiceCleanData()
+	code := database.GetInstance().ServiceCleanData()
 	if code != 200 {
 		w.WriteHeader(500)
 		_, err := w.Write([]byte("[]"))
@@ -411,10 +411,10 @@ func PostServiceClear(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetServiceStatus(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("GetServiceStatus")
+	//fmt.Println("GetServiceStatus")
 	w.Header().Add("Content-type", "application/json")
 
-	status, code := database.MethodGetServiceStatus()
+	status, code := database.GetInstance().MethodGetServiceStatus()
 	if code == 200 {
 		w.WriteHeader(200)
 
@@ -444,7 +444,7 @@ func GetServiceStatus(w http.ResponseWriter, r *http.Request) {
 //--------------------------END SERVICE-------------------------------
 
 func PostPostCreate(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("PostPostCreate")
+	//fmt.Println("PostPostCreate")
 	w.Header().Add("Content-type", "application/json")
 
 	vars := mux.Vars(r)
@@ -464,7 +464,7 @@ func PostPostCreate(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("PostThreadCreate, decode err,", err)
 	}
 
-	postsSlice, code := database.MethodCreatePost(PostsSlice, thread_slug_or_id)
+	postsSlice, code := database.GetInstance().MethodCreatePost(PostsSlice, thread_slug_or_id)
 
 	if code == 201 {
 		w.WriteHeader(201)
@@ -532,7 +532,7 @@ func PostThreadVote(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("PostThreadCreate, decode err,", err)
 	}
 
-	voted_thread, code := database.MethodVote(&VoteModel, thread_slug_or_id)
+	voted_thread, code := database.GetInstance().MethodVote(&VoteModel, thread_slug_or_id)
 	if code == 200 {
 		w.WriteHeader(200)
 
@@ -559,7 +559,7 @@ func PostThreadVote(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetThreadDetails(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("GetThreadDetails")
+	//fmt.Println("GetThreadDetails")
 	w.Header().Add("Content-type", "application/json")
 
 	vars := mux.Vars(r)
@@ -571,7 +571,7 @@ func GetThreadDetails(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	thread, code := database.MethodGetDetails(thread_slug_or_id)
+	thread, code := database.GetInstance().MethodGetDetails(thread_slug_or_id)
 	if code == 200 {
 		w.WriteHeader(200)
 
@@ -599,7 +599,7 @@ func GetThreadDetails(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetThreadPosts(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("GetThreadDetails")
+	//fmt.Println("GetThreadDetails")
 	w.Header().Add("Content-type", "application/json")
 
 	vars := mux.Vars(r)
@@ -640,7 +640,7 @@ func GetThreadPosts(w http.ResponseWriter, r *http.Request) {
 	params_struct.Since = param_since
 	params_struct.Sort = param_sort
 
-	posts, code := database.MethodGetThreadPosts(thread_slug_or_id, params_struct)
+	posts, code := database.GetInstance().MethodGetThreadPosts(thread_slug_or_id, params_struct)
 	if code == 200 {
 		w.WriteHeader(200)
 		if len(posts) == 0 {
@@ -674,7 +674,7 @@ func GetThreadPosts(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostThreadUpdate(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("GetThreadPosts")
+	//fmt.Println("GetThreadPosts")
 	w.Header().Add("Content-type", "application/json")
 
 	vars := mux.Vars(r)
@@ -694,7 +694,7 @@ func PostThreadUpdate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println("PostThreadCreate, decode err,", err)
 	}
-	new_thread_details, code := database.MethodUpdateThreadDetails(thread_slug_or_id, post_update_struct)
+	new_thread_details, code := database.GetInstance().MethodUpdateThreadDetails(thread_slug_or_id, post_update_struct)
 	if code == 200 {
 		w.WriteHeader(200)
 
@@ -724,7 +724,7 @@ func PostThreadUpdate(w http.ResponseWriter, r *http.Request) {
 //--------------------------CREATE USER-------------------------------
 
 func PostUserCreate(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("PostUserCreate")
+	//fmt.Println("PostUserCreate")
 	w.Header().Add("Content-type", "application/json")
 
 	vars := mux.Vars(r)
@@ -744,7 +744,7 @@ func PostUserCreate(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("PostForumCreate, decode err,", err)
 	}
 
-	users, violationflag := database.MethodCreateOrGetUser(&NewUserData)
+	users, violationflag := database.GetInstance().MethodCreateOrGetUser(&NewUserData)
 
 	if violationflag == 1 {
 		w.WriteHeader(http.StatusConflict)
@@ -787,7 +787,7 @@ func GetUserProfile(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	user, violationflag := database.MethodGetUserProfile(path_nickname)
+	user, violationflag := database.GetInstance().MethodGetUserProfile(path_nickname)
 	if violationflag == 1 {
 		w.WriteHeader(404)
 		error_model := models.Error{fmt.Sprintf("Can't find user with nickname %s", path_nickname)}
@@ -814,7 +814,7 @@ func GetUserProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostUserUpdate(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("PostUserUpdate")
+	//fmt.Println("PostUserUpdate")
 	w.Header().Add("Content-type", "application/json")
 
 	vars := mux.Vars(r)
@@ -839,7 +839,7 @@ func PostUserUpdate(w http.ResponseWriter, r *http.Request) {
 		UpdatedUserData.Email = ""
 	}
 
-	user, violationflag := database.MethodUpdateUserProfile(&UpdatedUserData)
+	user, violationflag := database.GetInstance().MethodUpdateUserProfile(&UpdatedUserData)
 
 	if violationflag == 1 {
 		w.WriteHeader(404)
