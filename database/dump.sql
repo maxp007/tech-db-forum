@@ -404,7 +404,7 @@ $$;
 
 alter function "CreateOrGetThread"(citext, citext, text, text, citext, text) owner to postgres;
 
-create or replace function "CreateOrGetVote"(thread_slug citext, thread_id integer, author citext, vote integer) returns SETOF "Thread"
+create function "CreateOrGetVote"(thread_slug citext, thread_id integer, author citext, vote integer) returns SETOF "Thread"
   language plpgsql
 as
 $$
@@ -414,10 +414,8 @@ DECLARE
   author_row     "User"%ROWTYPE;
   treadSlug      citext;
   vote_counter   integer := 0;
-  vote_voice     integer := 0;
+  vote_voice     integer :=0;
 BEGIN
-
-
   -- CHECK IF THREAD BY SLUG EXISTS
   if thread_id = 0 then
     SELECT count(*) INTO thread_counter from public."Thread" where slug = thread_slug::citext;
@@ -434,36 +432,33 @@ BEGIN
     RAISE EXCEPTION 'THREAD NOT FOUND  slug  %, id %', thread_slug::text,thread_id::text USING ERRCODE = 'no_data_found';
   end if;
 
-  if vote = 0 AND author = '' then
+  if vote =0 AND author=''then
     RETURN QUERY SELECT * from public."Thread" WHERE slug = treadSlug::citext;
   end if;
 
-  if (vote <> -1 AND vote <> 1) then
-    RAISE EXCEPTION 'WRONG VOTE VALUE  %', vote::text USING ERRCODE = 'no_data_found';
-    return;
-  end if;
+  --if (vote <> -1 AND vote <> 1) then
+  --  RAISE EXCEPTION 'WRONG VOTE VALUE  %', vote::text USING ERRCODE = 'no_data_found';
+  --  return;
+  --end if;
 
-  SELECT count(*) INTO author_counter from public."User" where nickname = author::citext;
-  SELECT * INTO author_row from public."User" where nickname = author::citext;
-  if author_counter = 0 then
-    RAISE EXCEPTION 'AUTHOR NOT FOUND  nickname %,', author::text USING ERRCODE = 'no_data_found';
-    return;
-  end if;
-  SELECT count(*) INTO vote_counter
-  from public."Vote"
-  where ("thread" = treadSlug::citext AND "nickname" = author::citext);
+  -- SELECT count(*) INTO author_counter from public."User" where nickname = author::citext;
 
+  --SELECT * INTO author_row from public."User" where nickname = author::citext;
+  --if author_counter = 0 then
+  -- RAISE EXCEPTION 'AUTHOR NOT FOUND  nickname %,', author::text USING ERRCODE = 'no_data_found';
+  --return;
+  --end if;
+
+  SELECT count(*) INTO vote_counter  from public."Vote"  where ("thread" = treadSlug::citext AND "nickname" = author::citext);
   if vote_counter = 0 then
     INSERT INTO public."Vote" ("nickname", "voice", "thread") VALUES (author, vote, treadSlug);
     UPDATE public."Thread" SET "votes"="votes" + vote::integer WHERE "slug" = treadSlug::citext;
   else
-    SELECT voice INTO vote_voice
-    from public."Vote"
-    where ("thread" = treadSlug::citext AND "nickname" = author::citext);
+    SELECT voice INTO vote_voice from public."Vote" where ("thread" = treadSlug::citext AND "nickname" = author::citext);
 
     if vote_voice::integer <> vote::integer then
       UPDATE public."Vote" SET "voice" = vote WHERE "thread" = treadSlug::citext AND "nickname" = author::citext;
-      UPDATE public."Thread" SET "votes"="votes" + vote + vote::integer WHERE "slug" = treadSlug::citext;
+      UPDATE public."Thread" SET "votes"="votes" + vote  + vote::integer WHERE "slug" = treadSlug::citext;
     end if;
   end if;
 
@@ -473,6 +468,7 @@ END
 $$;
 
 alter function "CreateOrGetVote"(citext, integer, citext, integer) owner to postgres;
+
 
 create or replace function "GetThreadDetails"(thread_slug citext, thread_id integer) returns SETOF "Thread"
   language plpgsql

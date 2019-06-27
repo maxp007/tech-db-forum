@@ -512,7 +512,7 @@ func PostPostCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostThreadVote(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("PostThreadVote")
+	//fmt.Println("PostThreadVote")
 	w.Header().Add("Content-type", "application/json")
 
 	vars := mux.Vars(r)

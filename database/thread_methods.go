@@ -419,7 +419,7 @@ func MethodCreatePost(PostsSlice []models.In_Post, thread_slug_or_id string) (
 }
 
 func MethodVote(in *models.Vote, thread_slug_or_id string) (thread models.Thread, responsecode int) {
-	fmt.Println("MethodVote")
+	//fmt.Println("MethodVote")
 
 	conn, err := Connect()
 	tx, err := conn.Begin()
