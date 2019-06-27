@@ -11,7 +11,7 @@ import (
 )
 
 func PostForumCreate(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("PostForumCreate")
+	//fmt.Println("PostForumCreate")
 
 	w.Header().Add("Content-type", "application/json")
 

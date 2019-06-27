@@ -9,7 +9,7 @@ import (
 )
 
 func MethodCreateOrGetThread(in *models.Thread) (thread models.Thread, responsecode int) {
-	fmt.Println("MethodCreateOrGetThread")
+	//fmt.Println("MethodCreateOrGetThread")
 
 	conn, err := Connect()
 	tx, err := conn.Begin()
@@ -172,7 +172,7 @@ func MethodCreateOrGetThread(in *models.Thread) (thread models.Thread, responsec
 }
 
 func MethodGetThreads(forum_slug string, limit string, since string, desc string) (threads []models.ThreadFull, responsecode int) {
-	fmt.Println("MethodGetThreads")
+	//fmt.Println("MethodGetThreads")
 
 	conn, err := Connect()
 	if err != nil {
