@@ -1107,7 +1107,7 @@ BEGIN
         return;
 
       else
-        parent_id_array := ARRAY(SELECT id FROM "Post" WHERE (parent = 0 AND thread = treadId) LIMIT limit_posts);
+        parent_id_array := ARRAY(SELECT id FROM "Post" WHERE (parent = 0 AND thread = treadId) ORDER BY id ASC LIMIT limit_posts);
         FOR i in 1..array_length(parent_id_array, 1)
           LOOP
             child_id_array := ARRAY(WITH RECURSIVE tree AS (
