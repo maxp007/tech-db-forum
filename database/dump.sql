@@ -137,8 +137,8 @@ create index parent_index
 create index full_index
   on "Post" (id, parent, thread);
 
-create index thread_id_index
-  on "Post" (thread, id);
+create unique index thread_id_uindex
+  on "Thread" (id) INCLUDE (slug);
 
 create table "Thread"
 (
@@ -414,7 +414,7 @@ DECLARE
   author_row     "User"%ROWTYPE;
   treadSlug      citext;
   vote_counter   integer := 0;
-  vote_voice     integer :=0;
+  vote_voice     integer := 0;
 BEGIN
   -- CHECK IF THREAD BY SLUG EXISTS
   if thread_id = 0 then
@@ -432,7 +432,7 @@ BEGIN
     RAISE EXCEPTION 'THREAD NOT FOUND  slug  %, id %', thread_slug::text,thread_id::text USING ERRCODE = 'no_data_found';
   end if;
 
-  if vote =0 AND author=''then
+  if vote = 0 AND author = '' then
     RETURN QUERY SELECT * from public."Thread" WHERE slug = treadSlug::citext;
   end if;
 
@@ -449,18 +449,21 @@ BEGIN
   --return;
   --end if;
 
-  SELECT count(*) INTO vote_counter  from public."Vote"  where ("thread" = treadSlug::citext AND "nickname" = author::citext);
-  if vote_counter = 0 then
+  BEGIN
     INSERT INTO public."Vote" ("nickname", "voice", "thread") VALUES (author, vote, treadSlug);
     UPDATE public."Thread" SET "votes"="votes" + vote::integer WHERE "slug" = treadSlug::citext;
-  else
-    SELECT voice INTO vote_voice from public."Vote" where ("thread" = treadSlug::citext AND "nickname" = author::citext);
-
-    if vote_voice::integer <> vote::integer then
-      UPDATE public."Vote" SET "voice" = vote WHERE "thread" = treadSlug::citext AND "nickname" = author::citext;
-      UPDATE public."Thread" SET "votes"="votes" + vote  + vote::integer WHERE "slug" = treadSlug::citext;
-    end if;
-  end if;
+  EXCEPTION
+    WHEN unique_violation THEN
+      SELECT voice INTO vote_voice
+      from public."Vote"
+      where ("thread" = treadSlug::citext AND "nickname" = author::citext);
+      if vote_voice::integer <> vote::integer then
+        UPDATE public."Vote"
+        SET "voice" = vote
+        WHERE "thread" = treadSlug::citext AND "nickname" = author::citext;
+        UPDATE public."Thread" SET "votes"="votes" + vote::integer + vote::integer WHERE "slug" = treadSlug::citext;
+      end if;
+  END;
 
   RETURN QUERY SELECT * from public."Thread" WHERE slug = treadSlug::citext;
 
@@ -468,7 +471,6 @@ END
 $$;
 
 alter function "CreateOrGetVote"(citext, integer, citext, integer) owner to postgres;
-
 
 create or replace function "GetThreadDetails"(thread_slug citext, thread_id integer) returns SETOF "Thread"
   language plpgsql

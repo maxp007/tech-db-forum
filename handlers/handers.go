@@ -508,7 +508,6 @@ func PostPostCreate(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("failed to write response ")
 		}
 	}
-
 }
 
 func PostThreadVote(w http.ResponseWriter, r *http.Request) {
